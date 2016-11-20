@@ -4,7 +4,7 @@ from gpkit.tools import te_exp_minus1
 from gpkit.feasibility import feasibility_model
 n_stages = 2
 
-dV_requirement = Variable("dV_requirement","m/s")
+dV_total = Variable("dV_requirement","m/s")
 dV = VectorVariable(n_stages,"dV","m/s")
 
 Isp = VectorVariable(n_stages,"Isp",[282,348],"s") #Values from F9 wiki
@@ -46,11 +46,11 @@ constraints+=[
 
 with gpkit.SignomialsEnabled():
 	constraints+=[
-		dV_requirement <= dV[0] + dV[1]
+		dV_total <= dV[0] + dV[1]
 	]
 
 # objective = m_fuel[0] + m_fuel[1]
-objective = 1/dV_requirement
+objective = 1/dV_total
 # objective = 1/dV[0] + 1/dV[1]
 m = Model(objective,constraints)
 # so2 = feasibility_model(m.gp(),"max")
