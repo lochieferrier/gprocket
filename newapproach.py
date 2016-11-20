@@ -7,12 +7,12 @@ n_stages = 2
 dV_requirement = Variable("dV_requirement",4000,"m/s")
 dV = VectorVariable(n_stages,"dV","m/s")
 
-Isp = VectorVariable(n_stages,"Isp",[282,348],"s") #Value from wiki on specific impulse
-theta_fuel = VectorVariable(n_stages,"theta_fuel",[0.97,0.95],"-")
+Isp = VectorVariable(n_stages,"Isp",[282,348],"s") #Values from F9 wiki
+theta_fuel = VectorVariable(n_stages,"theta_fuel",[0.97,0.95],"-") #Super optimistic values
 z = VectorVariable(n_stages,"z","-")
 m_fuel = VectorVariable(n_stages,"m_fuel","kg")
 m_payload = Variable("m_payload",100,"kg")
-m_zfw = VectorVariable(n_stages,"m_zfw","kg")
+m_structures = VectorVariable(n_stages,"m_structures","kg")
 m_dot = VectorVariable(n_stages,"m_dot","kg/s")
 v_exhaust_effective = VectorVariable(n_stages,"v_exhaust_effective","m/s")
 F_thrust = VectorVariable(n_stages,"F_thrust","N")
@@ -29,17 +29,20 @@ for stage in range(n_stages):
 		z[stage] >= (dV[stage]+g*(m_fuel[stage]/m_dot[stage]))/v_exhaust_effective[stage],
 		theta_fuel[stage] >= te_exp_minus1(z[stage],5)
 	]
+
 	if stage == 0:
-		constraints+=[F_thrust[stage]/g >= m_fuel[0] + m_zfw[0] + m_fuel[1] + m_zfw[1] + m_payload,
-					  total_mass[stage] >= m_fuel[stage]+m_fuel[stage+1]+m_zfw[stage]+m_zfw[stage+1]+m_payload,
+		constraints+=[F_thrust[stage]/g >= total_mass[stage],
+					  total_mass[stage] >= m_fuel[stage]+m_fuel[stage+1]+m_structures[stage]+m_structures[stage+1]+m_payload,
+					  m_structures[stage] == 0.02*m_fuel[stage],
 					  theta_fuel[stage] == m_fuel[stage]/total_mass[stage]]
 	if stage == 1:
-		constraints+=[F_thrust[stage]/g >= m_fuel[stage] + m_zfw[stage],
-					total_mass[stage] >= m_fuel[stage]+m_zfw[stage] + m_payload,
+		constraints+=[F_thrust[stage]/g >= total_mass[stage],
+					total_mass[stage] >= m_fuel[stage]+m_structures[stage] + m_payload,
+					m_structures[stage] == 0.02*m_fuel[stage],
 					theta_fuel[stage] == m_fuel[stage]/total_mass[stage]]
 
 constraints+=[
-			m_total >= m_zfw[0] + m_fuel[0] + m_zfw[1] + m_fuel[1] + m_payload]
+			m_total >= m_structures[0] + m_fuel[0] + m_structures[1] + m_fuel[1] + m_payload]
 
 with gpkit.SignomialsEnabled():
 	constraints+=[
@@ -52,7 +55,7 @@ m = Model(objective,constraints)
 # so2 = feasibility_model(m.gp(),"max")
 sol = m.localsolve(verbosity=1)
 print sol.table()
-print (1/sol['cost'])
+# print (1/sol['cost'])
 #
 # m.substitutions.update({dV_requirement:('sweep', [400,800,1200])})
 # a = m.localsolve(printing='false')
